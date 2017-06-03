@@ -1,0 +1,8 @@
+{
+    "devices":[
+        {"module":"mosca.devices", "class":"DummyDeviceDriver", "args":"raterange=(100,30000), intervalrange=(50,10000)"}
+    ],
+    "storages":[
+        {"module":"mosca.storages", "class":"NumpyIODriver", "args":""}
+    ]
+}
