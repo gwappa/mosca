@@ -27,7 +27,7 @@ class DriverInterface(QtCore.QObject):
 
     def __init__(self, parent):
         super().__init__(parent)
-    
+
     def configmap(self):
         """returns a dictionary (most likely in an OrderedDict object)
         for generation of GUI configuration forms.
@@ -83,8 +83,14 @@ def _():
     self.add_driver({module}.{class}({args}))
 _()
 """
-        for cfg in driverconfigs:
+        default_driver = None
+        for i, cfg in enumerate(driverconfigs):
             exec(registrar.format(**cfg), {'self':self})
+            isdefault = cfg.get('default', None)
+            if (isdefault is not None) and (bool(isdefault) == True):
+                default_driver = i
+        if default_driver is not None:
+            self.set_driver(i)
 
     def get_drivers(self):
         return self.drivers
@@ -92,9 +98,18 @@ _()
     def get_driver(self):
         return self.current
 
+    def get_index(self, driver=None):
+        if driver is None:
+            driver = self.current
+        return [k for k in self.drivers.values()].index(driver)
+
     def set_driver(self, name):
         if self.driverchanging == True:
             return
+
+        if isinstance(name, int):
+            return self.set_driver([k for k in self.drivers.keys()][name])
+
         if name not in self.drivers.keys():
             raise NameError("I/O driver with name '{0}' is not found.".format(name))
         self.driverchanging = True
@@ -161,4 +176,3 @@ class SynchronizedState(QtCore.QObject):
             timeout = sys.maxsize
         while self._state == False:
             self._condition.wait(self._mutex, timeout)
-

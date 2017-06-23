@@ -1,2 +1,7 @@
 test
-mosca/__pycache__/
+*.npy
+build/
+corelib.c
+NI.c
+*.pyd
+__pycache__/

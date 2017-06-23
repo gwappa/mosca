@@ -195,10 +195,12 @@ class ViewManager(models.SingletonManager):
         self.acqselector.addItems([str(k) for k in driverdict.keys()])
         self.devicelayout.addWidget(QtGui.QLabel("DAQ:"),0,0,1,1)
         self.devicelayout.addWidget(self.acqselector,0,1,1,1)
+        self.deviceconfigs = QtGui.QStackedWidget()
         for i, driver in enumerate(driverdict.values()):
-            # TODO: use StackWidget here
+            config = QtGui.QWidget()
             layout = QtGui.QFormLayout()
             layout.setFieldGrowthPolicy(QtGui.QFormLayout.ExpandingFieldsGrow)
+            config.setLayout(layout)
             for j, entry in enumerate(driver.configmap().items()):
                 try:
                     editor = views.ParameterView.create(**(entry[1]))
@@ -207,18 +209,25 @@ class ViewManager(models.SingletonManager):
                     entry[1]['typ'] = 'str'
                     editor = views.ParameterView.create(**(entry[1]))
                 layout.addRow(entry[0], editor)
-            self.devicelayout.addLayout(layout, 1,0,3,5)
-            break
+            self.deviceconfigs.insertWidget(i, config)
+        self.devicelayout.addWidget(self.deviceconfigs, 1,0,3,5)
+        cur = DeviceManager.get_index()
+        self.acqselector.setCurrentIndex(cur)
+        self.deviceconfigs.setCurrentIndex(cur)
+        self.acqselector.currentIndexChanged.connect(self.deviceconfigs.setCurrentIndex)
+        self.acqselector.currentIndexChanged.connect(DeviceManager.set_driver)
 
     def _load_io_drivers(self, driverdict):
         self.ioselector = QtGui.QComboBox()
         self.ioselector.addItems([str(k) for k in driverdict.keys()])
         self.iolayout.addWidget(QtGui.QLabel("I/O:"),0,0,1,1)
         self.iolayout.addWidget(self.ioselector,0,1,1,1)
+        self.ioconfigs = QtGui.QStackedWidget()
         for i, driver in enumerate(driverdict.values()):
-            # TODO: use StackWidget here
+            config = QtGui.QWidget()
             layout = QtGui.QFormLayout()
             layout.setFieldGrowthPolicy(QtGui.QFormLayout.ExpandingFieldsGrow)
+            config.setLayout(layout)
             for j, entry in enumerate(driver.configmap().items()):
                 try:
                     editor = views.ParameterView.create(**(entry[1]))
@@ -227,8 +236,13 @@ class ViewManager(models.SingletonManager):
                     entry[1]['typ'] = 'str'
                     editor = views.ParameterView.create(**(entry[1]))
                 layout.addRow(entry[0], editor)
-            self.iolayout.addLayout(layout, 1,0,3,5)
-            break
+            self.ioconfigs.insertWidget(i, config)
+        self.iolayout.addWidget(self.ioconfigs, 1,0,3,5)
+        cur = StorageManager.get_index()
+        self.ioselector.setCurrentIndex(cur)
+        self.ioconfigs.setCurrentIndex(cur)
+        self.ioselector.currentIndexChanged.connect(self.ioconfigs.setCurrentIndex)
+        self.ioselector.currentIndexChanged.connect(StorageManager.set_driver)
 
     def _update_with_acq_driver(self, name):
         if self._viewchanging == True:
@@ -387,8 +401,8 @@ DeviceManager.starting.connect(StorageManager.prepare)
 DeviceManager.finishing.connect(ViewManager.finalize)
 DeviceManager.finishing.connect(StorageManager.finalize)
 
-StorageThread.start()
-DeviceThread.start()
+StorageThread.start(QtCore.QThread.TimeCriticalPriority)
+DeviceThread.start(QtCore.QThread.TimeCriticalPriority)
 
 
 def start_viewing():
@@ -408,4 +422,3 @@ def start_recording():
 def stop_recording():
     DeviceManager.stop()
     ViewManager.update_with_acquisition(TOGGLE_ACQ_REC, False)
-

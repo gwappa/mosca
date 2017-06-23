@@ -84,7 +84,7 @@ class ChannelSelectorModel(QtCore.QAbstractTableModel):
         else:
             return False
 
-        self.dataChanged.emit(idx, idx, roles)
+        self.dataChanged.emit(idx, idx) #FIXME does not work on PyQt4: , roles)
         return True
 
 class ChannelSelector(QtGui.QDialog):
@@ -207,6 +207,3 @@ class BaseChannelModel(QtCore.QObject):
             self._scale = float(value)
         except ValueError as e:
             raise ValueError("failed to parse: '{0}'".format(value)) from e
-
-
-
