@@ -11,9 +11,6 @@ you can have access to all the functions, plus:
 """
 
 cdef extern from "_corelib.h":
-    DEF PlatformIsUNIX       = 0
-    DEF PlatformIsWindows    = 1
-    const int platform
 
     ctypedef struct mutex_t "coremutex":
         pass
@@ -34,8 +31,6 @@ cdef extern from "_corelib.h":
 
     int get_error    (int code, char *buf, int buflen) nogil
 
-cdef int UNIX    = PlatformIsUNIX
-cdef int WINDOWS = PlatformIsWindows
 cdef size_t BUFSIZ  = 2048
 
 cpdef void errorcheck(int code)

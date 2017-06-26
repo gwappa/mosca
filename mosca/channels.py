@@ -2,7 +2,7 @@
 from collections import OrderedDict
 from pyqtgraph.Qt import QtGui, QtCore
 from . import models
-from . import views
+from . import param
 from .messages import MessageManager
 
 ##
@@ -65,10 +65,13 @@ class ChannelSelectorModel(QtCore.QAbstractTableModel):
             return self.names[section]
 
     def data(self, idx, role):
-        if (role == QtCore.Qt.DisplayRole) and idx.isValid():
-            return getattr(self, self._attrs[idx.column()])[idx.row()].value
-        elif (role == QtCore.Qt.CheckStateRole) and idx.isValid() and (idx.column() == 0):
-            return QtCore.Qt.Checked if self.inuse[idx.row()].value == True else QtCore.Qt.Unchecked
+        if idx.isValid():
+            if (role == QtCore.Qt.DisplayRole) or (role == QtCore.Qt.EditRole):
+                return getattr(self, self._attrs[idx.column()])[idx.row()].value
+            elif (role == QtCore.Qt.CheckStateRole) and (idx.column() == 0):
+                return QtCore.Qt.Checked if self.inuse[idx.row()].value == True else QtCore.Qt.Unchecked
+            else:
+                return None
         else:
             return None
 
@@ -125,14 +128,13 @@ class ChannelView(QtGui.QGroupBox):
         self.load_contents()
 
     def load_contents(self):
-        for j, entry in enumerate(self.model.configmap().items()):
+        for config in self.model.configs():
             try:
-                editor = views.ParameterView.create(**(entry[1]))
+                editor = param.FormView.create(config)
             except NotImplementedError as e:
                 MessageManager.not_implemented("Not implemented", str(e))
-                entry[1]['typ'] = 'str'
-                editor = views.ParameterView.create(**(entry[1]))
-            self.layout.addRow(entry[0], editor)
+                editor = param.FormView.create(config, mode='str')
+            self.layout.addRow(config.label, editor)
 
     def update_title(self):
         """update title with the current model setting."""
@@ -153,6 +155,28 @@ class BaseChannelModel(QtCore.QObject):
         self._range = "±10 V"
         self._unit  = "V"
         self._scale = 1.0
+        self._view  = True
+
+        self._configs = []
+        self._configs.append(param.ParameterController(label='Input range',
+                                                        mode='str',
+                                                        getter=self.get_range,
+                                                        setter=None))
+
+        self._configs.append(param.ParameterController(label='Unit',
+                                                        mode='str',
+                                                        getter=self.get_unit,
+                                                        setter=self.set_unit))
+
+        self._configs.append(param.ParameterController(label='Scale (Unit/Vin)',
+                                                        mode='float',
+                                                        getter=self.get_scale,
+                                                        setter=self.set_scale))
+
+        self._configs.append(param.ParameterController(label='Oscillo',
+                                                        mode='bool',
+                                                        getter=self.get_view,
+                                                        setter=self.set_view))
 
     def __getattr__(self, name):
         if name == "range":
@@ -161,6 +185,8 @@ class BaseChannelModel(QtCore.QObject):
             return self.get_unit()
         elif name == "scale":
             return self.get_scale()
+        elif name == 'view':
+            return self.get_view()
         else:
             return super().__getattr__(name)
 
@@ -171,21 +197,13 @@ class BaseChannelModel(QtCore.QObject):
             self.set_unit(value)
         elif name == "scale":
             self.set_scale(value)
+        elif name == 'view':
+            self.set_view(value)
         else:
             super().__setattr__(name, value)
 
-    def configmap(self):
-        d = OrderedDict()
-        d['Input range']        = dict(typ='str',
-                                    getter=self.get_range,
-                                    setter=self.set_range)
-        d['Unit']               = dict(typ='str',
-                                    getter=self.get_unit,
-                                    setter=self.set_unit)
-        d['Scale (Unit/V_in)']  = dict(typ='float',
-                                    getter=self.get_scale,
-                                    setter=self.set_scale)
-        return d
+    def configs(self):
+        return self._configs
 
     def get_range(self):
         return self._range
@@ -195,6 +213,9 @@ class BaseChannelModel(QtCore.QObject):
 
     def get_scale(self):
         return self._scale
+
+    def get_view(self):
+        return self._view
 
     def set_range(self, value):
         self._range = value
@@ -207,3 +228,6 @@ class BaseChannelModel(QtCore.QObject):
             self._scale = float(value)
         except ValueError as e:
             raise ValueError("failed to parse: '{0}'".format(value)) from e
+
+    def set_view(self, value):
+        self._view = bool(value)

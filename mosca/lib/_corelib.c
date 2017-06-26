@@ -7,13 +7,6 @@
 #define MILLION 1000000
 #define BILLION 1000000000
 
-
-#ifdef _WIN32
-  const int platform = PlatformIsWindows;
-#else
-  const int platform = PlatformIsUNIX;
-#endif
-
 int coremutex_init      (coremutex *mutex)
 {
 #ifdef _WIN32

@@ -12,15 +12,18 @@ class ValueModel:
     def __repr__(self):
         return "ValueModel({0})".format(repr(self.value))
 
+def ensure_singleton(func):
+    return classmethod(utils.ensure_attribute('_singleton')(func))
+
 class SingletonManager(QtCore.QObject):
     _singleton = None
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
-def ensure_singleton(func):
-    return classmethod(utils.ensure_attribute('_singleton')(func))
-
+    @ensure_singleton
+    def get_instance(cls):
+        return cls._singleton
 
 class DriverInterface(QtCore.QObject):
     """An abstract interface that fits with the driver-manager model."""
@@ -28,31 +31,11 @@ class DriverInterface(QtCore.QObject):
     def __init__(self, parent):
         super().__init__(parent)
 
-    def configmap(self):
-        """returns a dictionary (most likely in an OrderedDict object)
+    def configs(self):
+        """returns a list of ParameterController's
         for generation of GUI configuration forms.
-
-        Entries in the base dictionary
-        --------------------------
-
-        + each 'key' corresponds to the label to a field.
-        + each 'value' composes another nested dictionary object for generation of editor (below).
-
-
-        Entries in the nested dictionaries
-        --------------------------
-
-        A nested dictionary consists of information for generating single editor element for the field.
-
-        + 'typ' --- Value type of the field. One of ('str', 'choice', 'dir', 'int', 'float', 'bool'). \
-                    Configures the right form element and (maybe) the validator for the GUI. \
-                    Note that, for the moment, only 'str' and 'int' are supported.
-        + 'getter' --- a getter method for the field. To be called as `getter()`.
-        + 'setter' --- a setter method for the field. To be called as `setter(value:str)`.
-
-
         """
-        return {}
+        return []
 
 class BaseDriverManager(QtCore.QObject):
     """A base class that deals with management of modular drivers.
@@ -68,6 +51,11 @@ class BaseDriverManager(QtCore.QObject):
         self.current    = None
         self.drivers    = OrderedDict()
         self.driverchanging = False
+
+    def moveToThread(self, th):
+        super().moveToThread(th)
+        for name, driver in self.drivers.items():
+            driver.moveToThread(th)
 
     def add_driver(self, driver):
         if driver.name in self.drivers.keys():
@@ -85,10 +73,16 @@ _()
 """
         default_driver = None
         for i, cfg in enumerate(driverconfigs):
-            exec(registrar.format(**cfg), {'self':self})
-            isdefault = cfg.get('default', None)
-            if (isdefault is not None) and (bool(isdefault) == True):
-                default_driver = i
+            try:
+                exec(registrar.format(**cfg), {'self':self})
+                isdefault = cfg.get('default', None)
+                if (isdefault is not None) and (bool(isdefault) == True):
+                    default_driver = i
+            except ModuleNotFoundError:
+                print("***could not load driver class: '{module}.{class}'".format(**cfg))
+            except:
+                traceback.print_exc()
+                print("***could not load driver class: '{module}.{class}'".format(**cfg))
         if default_driver is not None:
             self.set_driver(i)
 

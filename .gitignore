@@ -1,7 +1,8 @@
-test
+test*
 *.npy
 build/
 corelib.c
 NI.c
 *.pyd
+*.so
 __pycache__/

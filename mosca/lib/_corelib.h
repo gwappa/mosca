@@ -1,8 +1,4 @@
 #include <stddef.h>
-#define PlatformIsUNIX    0
-#define PlatformIsWindows 1
-
-const int platform;
 
 #ifdef _WIN32
 #include <winsock2.h> // instead of windows.h

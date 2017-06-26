@@ -7,6 +7,7 @@ from . import models
 from . import utils
 from . import states
 from . import devices
+from . import param
 from .utils import validate_integer
 
 ##
@@ -34,6 +35,7 @@ class IODriverManager(models.BaseDriverManager):
 
 class BaseIODriver(models.DriverInterface):
     """Defines basic behaviors as an I/O driver."""
+    acqno_changed = QtCore.pyqtSignal()
 
     def __init__(self, name, parent=None):
         super().__init__(parent)
@@ -41,6 +43,25 @@ class BaseIODriver(models.DriverInterface):
         self._directory = os.getcwd()
         self._basename  = 'wave'
         self._acqno     = 1
+        self._autoinc   = True
+        self._configs   = []
+        self._configs.append(param.ParameterController(label='Directory',
+                                                        mode='dir',
+                                                        getter=self.get_directory,
+                                                        setter=self.set_directory))
+        self._configs.append(param.ParameterController(label='Basename',
+                                                        mode='str',
+                                                        getter=self.get_basename,
+                                                        setter=self.set_basename))
+        self._configs.append(param.ParameterController(label='Acquisition number',
+                                                        mode='int',
+                                                        getter=self.get_acqno,
+                                                        setter=self.set_acqno,
+                                                        signal=self.acqno_changed))
+        self._configs.append(param.ParameterController(label='Auto-increment',
+                                                        mode='bool',
+                                                        getter=self.get_autoinc,
+                                                        setter=self.set_autoinc))
 
     def prepare(self):
         """prepares for the next acquisition."""
@@ -61,6 +82,8 @@ class BaseIODriver(models.DriverInterface):
             return self.get_basename()
         elif name == 'acqno':
             return self.get_acqno()
+        elif name == 'autoinc':
+            return self.get_autoinc()
         else:
             raise AttributeError(name)
 
@@ -71,6 +94,8 @@ class BaseIODriver(models.DriverInterface):
             return self.set_basename(val)
         elif name == 'acqno':
             return self.set_acqno(val)
+        elif name == 'autoinc':
+            return self.set_autoinc(val)
         else:
             super().__setattr__(name, val)
 
@@ -83,6 +108,9 @@ class BaseIODriver(models.DriverInterface):
     def get_acqno(self):
         return self._acqno
 
+    def get_autoinc(self):
+        return self._autoinc
+
     def set_directory(self, val):
         self._directory = val
 
@@ -91,26 +119,24 @@ class BaseIODriver(models.DriverInterface):
 
     def set_acqno(self, val):
         self._acqno = validate_integer(val, (-sys.maxsize, sys.maxsize), 'acquisition number')
+        self.acqno_changed.emit()
 
-    def configmap(self):
-        d = OrderedDict()
-        d['Directory'] =    dict(typ='dir',
-                                    getter=self.get_directory,
-                                    setter=self.set_directory)
-        d['Basename']  =    dict(typ='str',
-                                    getter=self.get_basename,
-                                    setter=self.set_basename)
-        d['Acquisition number'] = dict(typ='int',
-                                    getter=self.get_acqno,
-                                    setter=self.set_acqno)
-        return d
+    def set_autoinc(self, val):
+        self._autoinc = val
+
+    def configs(self):
+        return self._configs
+
+    def update_acqno(self):
+        if self._autoinc == True:
+            self.acqno += 1
 
 
 class NumpyIODriver(BaseIODriver):
     """For saving the acquired data in the numpy NPY format.
 
     for specification, please refer to: https://docs.scipy.org/doc/numpy/neps/npy-format.html"""
-    
+
     _magic      = b'\x93NUMPY'
     _version    = b'\x01\x00'
 
@@ -121,10 +147,11 @@ class NumpyIODriver(BaseIODriver):
         devices.DeviceManager.current.dataAvailable.connect(self.update)
         utils.ensure_directory(self.directory)
         self._nchan = len([ch for ch in devices.DeviceManager.current.channels.values() if ch.inuse == True])
-        self._info = dict(descr=BASETYPE.descr[0][1], fortran_order=False, 
+        self._info = dict(descr=BASETYPE.descr[0][1], fortran_order=False,
             shape=(sys.maxsize, self._nchan))
         self._size = 0
         self._scales = tuple(ch.scale for ch in devices.DeviceManager.current.channels.values() if ch.inuse == True)
+        self._scales = np.array(self._scales).reshape((1,-1))
 
         self._headeroffset = len(self._magic) + len(self._version) + 2
         self._header = pprint.pformat(self._info).encode('utf-8')
@@ -134,7 +161,7 @@ class NumpyIODriver(BaseIODriver):
         self._headerlen = headerlen if r == 0 else headerlen + (16 - r)
 
         # TODO: ask if we can overwrite file
-        self._target = open(os.path.join(self.directory, 
+        self._target = open(os.path.join(self.directory,
             "{0}_{1:03d}.npy".format(self.basename, self.acqno)), 'wb')
         self._target.write(self._magic)
         self._target.write(self._version)
@@ -145,9 +172,7 @@ class NumpyIODriver(BaseIODriver):
         self._target.write(b'\n')
 
     def update(self, data):
-        data = np.array(data, dtype=BASETYPE)
-        for i in range(self._nchan):
-            data[:,i] *= self._scales[i]
+        data = np.array(data, dtype=BASETYPE)*(self._scales)
         self._target.write(bytes(data.reshape((-1,), order='C')))
         self._size += data.shape[0]
 
@@ -161,15 +186,10 @@ class NumpyIODriver(BaseIODriver):
             self._target.write(b' ')
         self._target.write(b'\n')
         self._target.close()
+        self.update_acqno()
 
 def setup(cfg):
     global StorageManager
     StorageManager = IODriverManager("I/O")
     StorageManager.load_drivers(cfg['storages'])
     # StorageManager.add_driver(NumpyIODriver())
-
-
-
-
-
-    

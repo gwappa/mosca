@@ -7,12 +7,6 @@ cdef carray.array chararray = array.array('b')
 
 cdef carray.array err = carray.clone(chararray, BUFSIZ, zero=False)
 
-cpdef void hello():
-    if platform == WINDOWS:
-        printf("Hello from Windows!\n")
-    else:
-        printf("Hello from UNIX!\n")
-
 cpdef void errorcheck(int code):
     if code != 0:
         valid = get_error(code, err.data.as_chars, BUFSIZ)
