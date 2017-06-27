@@ -142,11 +142,8 @@ class Board(BaseDeviceDriver):
 
 cdef class OscilloTask:
 
-    cdef carray.array _buf
-    cdef carray.array _dims
-    cdef uint64_t     _ready
-    cdef uint64_t     _offset
-    cdef uInt32       HALF
+    cdef double *_buf
+    cdef cnumpy.ndarray _array
 
     cdef carray.array name
     cdef int          _nchan
@@ -154,6 +151,7 @@ cdef class OscilloTask:
     cdef uInt32       _chunksiz
     cdef TaskHandle   _handle
     cdef object       _parent
+
     cdef corelib.mutex_t _io
     cdef corelib.cond_t  _update
     cdef int          _term
@@ -163,7 +161,11 @@ cdef class OscilloTask:
         self.name       = array.array('b', name.encode('utf8')+b'\0')
         self._interval  = interval
         self._nchan      = <int>len(channels)
-        self._dims      = array.array('i', [self._interval, self._nchan])
+        self._chunksiz  = len(channels)*self._interval
+        self._array     = np.empty((self._interval, self._nchan), dtype=np.float64, order='C')
+
+        cdef double[:,:] proxy = self._array
+        self._buf       = &(proxy[0,0])
         self._handle    = NULL
         assert isinstance(parent, Board)
         self._parent    = parent
@@ -198,8 +200,6 @@ cdef class OscilloTask:
                             DAQmx_Val_Rising,
                             DAQmx_Val_ContSamps,
                             self._interval))
-            self._chunksiz  = len(channels)*self._interval
-            self._buf       = carray.clone(dbuf_temp, self._chunksiz, zero=False)
 
             _check_error(DAQmxRegisterEveryNSamplesEvent(self._handle,
                             DAQmx_Val_Acquired_Into_Buffer,
@@ -214,8 +214,6 @@ cdef class OscilloTask:
 
     def start(self):
         try:
-            self._offset    = 0
-            self._ready     = 0
             self._term      = 0
             corelib.errorcheck(corelib.mutex_lock(&(self._io)))
             _check_error(DAQmxStartTask(self._handle))
@@ -235,10 +233,11 @@ cdef class OscilloTask:
         DAQmxStopTask(self._handle)
         try:
             _check_error(DAQmxWaitUntilTaskDone(self._handle, DEFAULT_TIMEOUT_SEC))
-            corelib.mutex_lock(&(self._io))
-            self._term = 1
-            corelib.cond_notify_all(&(self._update))
-            corelib.mutex_unlock(&(self._io))
+            with nogil:
+                corelib.mutex_lock(&(self._io))
+                self._term = 1
+                corelib.cond_notify_all(&(self._update))
+                corelib.mutex_unlock(&(self._io))
         except NIDAQmxError as e:
             raise e
         finally:
@@ -262,7 +261,7 @@ cdef class OscilloTask:
                         obj._interval,
                         DEFAULT_TIMEOUT_SEC,
                         DAQmx_Val_GroupByScanNumber,
-                        obj._buf.data.as_doubles,
+                        obj._buf,
                         obj._chunksiz,
                         &(obj._read),
                         NULL
@@ -278,18 +277,7 @@ cdef class OscilloTask:
         return 0
 
     def fire_update(self):
-        cdef uInt32 t, c
-        cdef uInt32 offset = 0
-        cdef cnumpy.ndarray[cnumpy.float64_t, ndim=2] arr = np.empty((self._interval, self._nchan), dtype=np.float64, order='C')
-        cdef double *buf = self._buf.data.as_doubles
-        with nogil:
-            for c in range(self._nchan):
-                for t in range(self._interval):
-                    arr[t,c] = buf[offset]
-                    offset += 1
-        # cdef carray.array shape = array.array('i', [self._interval, self._nchan, 1])
-        # arr = cnumpy.PyArray_SimpleNewFromData(2, shape.data.as_ints, cnumpy.NPY_FLOAT64, self._buf.data.as_doubles + self._ready)
-        self._parent.dataAvailable.emit(arr[:(self._read)])
+        self._parent.dataAvailable.emit(self._array[:(self._read)])
 
     def close(self):
         if self._handle is not NULL:

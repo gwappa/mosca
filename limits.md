@@ -62,3 +62,21 @@ Limits @ 170626-2
 8ch: >=700
 
 Really slight change on the baseline requirement.
+
+
+Limits @ 170627
+-------------------
+
+- with priority
+- numpy buffer in C
+- no ring buffer
+- no data management
+- at 10 kHz
+
+1ch: >=370
+2ch: >=370
+4ch: >=460
+8ch: >=690
+
+Slight changes on channel-number dependency.
+Data management on the user side should be the problem.
