@@ -326,7 +326,6 @@ class ViewManager(models.SingletonManager):
         """(temporary) populate 'Control' window and display it."""
         self.mainwidget         = ControlPanel()
         self.mainwidget.setWindowTitle("Mosca Control")
-        self.mainwidget.resize(1000,800)
 
         # command widgets to be populated
         self.tools    = QtGui.QHBoxLayout()
@@ -351,18 +350,17 @@ class ViewManager(models.SingletonManager):
         self.storage = DriverPanel(StorageManager, "Storage", "I/O selection")
         self.AI  = ChannelPanel("Analog Inputs")
         self.AI.channelsLoaded.connect(self._update_with_channels)
-        self._layout.addWidget(QtGui.QGroupBox("Analog outputs"), 0, 0, 2, 1) # row 0-1, col 0
-        self._layout.addWidget(self.AI, 2, 0, 1, 1) # row: 2, col: 0
-        self._layout.addWidget(self.device, 0, 1, 1, 1) # row: 0, col: 1
-        self._layout.addWidget(QtGui.QGroupBox("Plotting"), 1, 1, 1, 1) # row 1, col 1
-        self._layout.addWidget(self.storage, 2, 1, 1, 1) # row: 2, col: 1
-        self._layout.addLayout(self.tools, 3, 0, 1, 2) # row: 3, col: 0-1
-        self._layout.setColumnStretch(0, 2)
-        self._layout.setColumnStretch(1, 1)
+        self._layout.addWidget(self.device, 0, 0, 1, 1) # row: 0, col: 0
+        self._layout.addWidget(self.AI, 0, 1, 1, 1) # row: 0, col: 1
+        self._layout.addWidget(self.storage, 0, 2, 1, 1) # row: 0, col: 2
+        self._layout.addLayout(self.tools, 1, 0, 1, 3) # row: 3, col: 0-2
+        self._layout.setColumnStretch(0, 1)
+        self._layout.setColumnStretch(1, 3)
+        self._layout.setColumnStretch(2, 1)
         self._layout.setRowStretch(0, 4)
-        self._layout.setRowStretch(1, 4)
-        self._layout.setRowStretch(2, 4)
-        self._layout.setRowStretch(3, 3)
+        self._layout.setRowStretch(1, 3)
+        self.mainwidget.resize(1250,250)
+        self.mainwidget.move(40,40)
 
     def _update_with_channels(self):
         enable = len([ch for ch in DeviceManager.current.channels.values() if ch.inuse == True]) > 0
