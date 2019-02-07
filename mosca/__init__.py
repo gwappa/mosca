@@ -15,8 +15,6 @@ Future plans
 Issues
 ------
 
-+ There is some update problem on NI-DAQmx: base required interval is too large (>38 msec).
-    - use a ring buffer and direct view objects for reducing latency?
 + The code is too messy. Refactor when the first version works.
 
 
@@ -102,10 +100,12 @@ class ControlPanel(QtGui.QWidget):
 
 class DriverPanel(QtGui.QGroupBox):
 
-    def __init__(self, title, optionlabel="Selection", parent=None):
+    def __init__(self, manager, title, optionlabel="Selection", parent=None):
         super().__init__(title, parent)
+        self.manager     = manager
         self.optionlabel = optionlabel
         self.populate()
+        print(f"[{manager.name}]: done driver initialization.")
 
     def populate(self):
         self._layout = QtGui.QGridLayout()
@@ -135,11 +135,11 @@ class DriverPanel(QtGui.QGroupBox):
                 layout.addRow(label, editor)
             self.configs.insertWidget(i, config)
         self._layout.addWidget(self.configs, 1,0,3,5)
-        cur = DeviceManager.get_index()
+        cur = self.manager.get_index()
         self.selector.setCurrentIndex(cur)
         self.configs.setCurrentIndex(cur)
         self.selector.currentIndexChanged.connect(self.configs.setCurrentIndex)
-        self.selector.currentIndexChanged.connect(DeviceManager.set_driver)
+        self.selector.currentIndexChanged.connect(self.manager.set_driver)
 
 class ChannelTableModel(QtCore.QAbstractTableModel):
     def __init__(self, parent=None):
@@ -347,8 +347,8 @@ class ViewManager(models.SingletonManager):
         # layout components
         self._layout         = QtGui.QGridLayout()
         self.mainwidget.setLayout(self._layout)
-        self.device = DriverPanel("Device", "DAQ selection")
-        self.storage = DriverPanel("Storage", "I/O selection")
+        self.device = DriverPanel(DeviceManager, "Device", "DAQ selection")
+        self.storage = DriverPanel(StorageManager, "Storage", "I/O selection")
         self.AI  = ChannelPanel("Analog Inputs")
         self.AI.channelsLoaded.connect(self._update_with_channels)
         self._layout.addWidget(QtGui.QGroupBox("Analog outputs"), 0, 0, 2, 1) # row 0-1, col 0

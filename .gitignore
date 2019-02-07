@@ -1,10 +1,11 @@
-test*
-*.npy
 build/
 dist/
 mosca.egg-info/
+local/
 corelib.c
 NI.c
 *.pyd
 *.so
 __pycache__/
+.DS_Store
+

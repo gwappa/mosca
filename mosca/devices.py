@@ -162,5 +162,5 @@ class DummyDeviceDriver(BaseDeviceDriver):
 
 def setup(cfg):
     global DeviceManager
-    DeviceManager = DeviceDriverManager("Acquisition")
+    DeviceManager = DeviceDriverManager("Device")
     DeviceManager.load_drivers(cfg['devices'])

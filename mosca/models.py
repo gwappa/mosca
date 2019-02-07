@@ -79,10 +79,12 @@ _()
                 if (isdefault is not None) and (bool(isdefault) == True):
                     default_driver = i
             except ModuleNotFoundError:
-                print("***could not load driver class: '{module}.{class}'".format(**cfg))
+                print("***{managername}: could not load driver class: '{module}.{class}'".format(managername=self.name,
+                        **cfg))
             except:
                 traceback.print_exc()
-                print("***could not load driver class: '{module}.{class}'".format(**cfg))
+                print("***{managername}: could not load driver class: '{module}.{class}'".format(managername=self.name,
+                        **cfg))
         if default_driver is not None:
             self.set_driver(i)
 
@@ -105,11 +107,11 @@ _()
             return self.set_driver([k for k in self.drivers.keys()][name])
 
         if name not in self.drivers.keys():
-            raise NameError("I/O driver with name '{0}' is not found.".format(name))
+            raise NameError(f"{self.name}: driver with name '{name}' is not found.")
         self.driverchanging = True
         try:
             self.current = self.drivers[name]
-            print(f"{self}: driver changed to: {self.current}")
+            print(f"[{self.name}] driver changed to: {self.current}")
             self.driverchanged.emit(self.current)
         except:
             traceback.print_exc()
