@@ -397,8 +397,8 @@ class ViewManager(models.SingletonManager):
 
         self.oscillo = pg.GraphicsLayoutWidget(border=(255,255,255))
         self.oscillo.setWindowTitle("Mosca oscillo")
-        self.oscillo.resize(800,600)
-        self.oscillo.move(0,0)
+        self.oscillo.resize(1100,600)
+        self.oscillo.move(40,300)
         self.scales = []
         self.curves = []
         self.plots = []
@@ -430,6 +430,7 @@ class ViewManager(models.SingletonManager):
         self.oscillobutton.setEnabled(True)
         self.oscillobutton.setChecked(True)
         self.set_setting_enabled(False)
+        self.oscillo.show()
 
     def _update(self, data):
         """called during acquisition."""
