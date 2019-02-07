@@ -109,6 +109,7 @@ _()
         self.driverchanging = True
         try:
             self.current = self.drivers[name]
+            print(f"{self}: driver changed to: {self.current}")
             self.driverchanged.emit(self.current)
         except:
             traceback.print_exc()

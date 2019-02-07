@@ -1,6 +1,8 @@
 test*
 *.npy
 build/
+dist/
+mosca.egg-info/
 corelib.c
 NI.c
 *.pyd

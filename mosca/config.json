@@ -3,7 +3,7 @@
         {"module":"mosca.devices", "class":"DummyDeviceDriver",
           "args":"raterange=(100,30000), intervalrange=(50,10000)"},
         {"module":"mosca.lib.NI", "class":"Board",
-          "args":"'Dev1', boardtype='NI6321', raterange=(100, 30000), intervalrange=(300, 5000)",
+          "args":"'Dev1', boardtype='USB6002', raterange=(100, 30000), intervalrange=(300, 5000)",
          "default": 1 }
     ],
     "storages":[

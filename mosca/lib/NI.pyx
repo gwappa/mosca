@@ -83,7 +83,8 @@ from mosca.channels import BaseChannelModel
 from mosca.devices import BaseDeviceDriver
 
 boardspecs = {
-  "NI6321": {"AI": 16}
+  "NI6321": {"AI": 16},
+  "USB6002": {"AI": 8}
 }
 
 DEF bufsiz = 2048
@@ -185,7 +186,7 @@ cdef class OscilloTask:
         try:
             for ch in channels:
                 namebuf = array.array('b', ch.name.encode('utf8')+b'\0')
-                printf("init: AI: %s\n", namebuf.data.as_chars)
+                printf("init: AI: %s...", namebuf.data.as_chars)
                 _check_error(DAQmxCreateAIVoltageChan(self._handle,
                                 namebuf.data.as_chars,
                                 "",
@@ -194,19 +195,23 @@ cdef class OscilloTask:
                                 10.0,
                                 DAQmx_Val_Volts,
                                 NULL))
+                printf("done.\n")
+            printf("init: rate: %d...", _rate)
             _check_error(DAQmxCfgSampClkTiming(self._handle,
                             "",
                             _rate,
                             DAQmx_Val_Rising,
                             DAQmx_Val_ContSamps,
                             self._interval))
-
+            printf("done.\n")
+            printf("init: interval: %d...", self._interval)
             _check_error(DAQmxRegisterEveryNSamplesEvent(self._handle,
                             DAQmx_Val_Acquired_Into_Buffer,
                             self._interval,
                             0,
                             OscilloTask.update,
                             <void *>self))
+            printf("done.\n")
         except NIDAQmxError as e:
             self.close()
             raise e
@@ -216,8 +221,9 @@ cdef class OscilloTask:
         try:
             self._term      = 0
             corelib.errorcheck(corelib.mutex_lock(&(self._io)))
+            printf("starting...\n")
             _check_error(DAQmxStartTask(self._handle))
-            printf("start...\n")
+            printf("started.\n")
             with nogil:
                 while self._term == 0:
                     corelib.cond_wait(&(self._update), &(self._io), -1)
