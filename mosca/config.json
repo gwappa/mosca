@@ -8,6 +8,7 @@
     ],
     "storages":[
         {"module":"mosca.storages", "class":"NumpyIODriver", "args":"",
-         "default": 1 }
+         "default": 1 },
+        {"module":"mosca.storages", "class":"BareZLibDriver", "args":""}
     ]
 }
