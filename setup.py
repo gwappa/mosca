@@ -61,9 +61,10 @@ else:
     print(">>> turning off the option: NI-DAQmx.")
 
 setup(
-    name        = "mosca",
-    version     = "0.1.0",
-    author      = "Keisuke Sehara",
-    packages    = find_packages(),
-    ext_modules = cythonize(extensions)
+    name         = "mosca",
+    version      = "0.1.0",
+    author       = "Keisuke Sehara",
+    packages     = find_packages(),
+    package_data = {'mosca': ['config.json']},
+    ext_modules  = cythonize(extensions)
 )
